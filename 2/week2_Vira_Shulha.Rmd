@@ -1,0 +1,375 @@
+---
+title: "Exercise set 2"
+author: "Vira,  Shulha"
+date: "07/11/2022"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exercise 1.
+
+### Loading and inspecting the data
+
+```{r E1-Q1.1}
+## add you code here
+count_matrix = readRDS('/student_data/BBT.BI.202_2022/data/week_2/count_matrix.RDS')
+
+```
+
+
+
+```{r hint-1}
+# count_matrix[grep("ENSG00000204479", row.names(count_matrix)), ]
+zero_genes = count_matrix[apply(count_matrix, 1, sum) == 0,]
+dim(zero_genes)
+```
+
+
+
+```{r E1-Q1.3}
+## add you code here
+row_medians = apply(count_matrix, 1, median)
+print(max(row_medians))
+boxplot(row_medians, ylim=c(0,1800))
+```
+
+
+### Filtering
+
+```{r E1-Q1.4}
+## add you code here
+threshhold = quantile(row_medians, 0.25)
+print(threshhold)
+length(row_medians[row_medians <= threshhold])
+```
+
+
+
+```{r hint-2}
+## inspect this code chunk to get some idea how to remove genes required in E1-Q1.7. Note that this is not the full answer...
+test_df = data.frame(c(8, 120, 10, 49, 19), c(12,33,101,45,247), fix.empty.names=F)
+valid_rows = rowSums(test_df) > 100
+test_df[valid_rows,]
+```
+
+
+
+```{r E1-Q1.7}
+## add you code here
+lowly_expressed_genes = row_medians > threshhold
+count_matrix_filtered = count_matrix[lowly_expressed_genes,]
+```
+
+
+
+### Before normalization
+
+```{r E1-Q1.9}
+## add you code here
+boxplot(count_matrix_filtered, las=2, ylim=c(0,4000))
+```
+
+
+
+### Median of ratios normalization
+
+```{r E1-Q1-NORMALIZATION}
+
+library(DESeq2)
+
+## preparing the sample_types that is going to assigned to colData argument in DESeqDataSetFromMatrix() function 
+column_names = colnames(count_matrix_filtered)
+
+sample_types = matrix(sub(pattern="_.*", 
+                          replacement="", 
+                          column_names)
+                      )
+
+rownames(sample_types) = column_names
+colnames(sample_types) = c("Type")
+
+## creating the data set expected by DESeq2
+
+dataset <- DESeqDataSetFromMatrix(countData=count_matrix_filtered, 
+                                  colData=sample_types, 
+                                  design=~1)
+
+dataset <- estimateSizeFactors(dataset) 
+
+count_matrix_filtered_mor_normed <- counts(dataset, 
+                                           normalized=TRUE) 
+```
+
+
+
+### After normalization
+
+```{r E1-Q1.12}
+## add you code here
+boxplot(apply(count_matrix_filtered_mor_normed, 2, sort), las=2, ylim=c(0,4000))
+boxplot(apply(count_matrix_filtered, 2, sort), las=2, ylim=c(0,4000))
+```
+
+
+
+## Exercise 2.
+
+### Hierarchical clustering
+
+```{r hint-3}
+## This code chunk shows how to create a nested for loop
+
+time_of_the_day = c("morning", "afternoon", "evening")
+colors = c("salmon", "lavender")
+
+print("Wake up! It's time!")
+for (time in time_of_the_day){
+    for (color in colors){
+      title = sprintf("    Let's paint our %s %s!", time, color)
+      print(title)
+  }
+  print('. and then ...')
+}
+print("Let's go to sleep!")
+```
+
+
+
+```{r E2-Q1.1}
+## add you code here
+linkage_methods = c('ward.D', 'ward.D2', 'single', 'complete', 'average', 'mcquitty', 'median', 'centroid')
+distance_metrics = c('euclidean', 'maximum', 'manhattan', 'canberra', 'binary', 'minkowski')
+for (linkage_method in linkage_methods){
+  for (distance_metric in distance_metrics){
+    plot(hclust(dist(t(count_matrix_filtered_mor_normed), method = distance_metric), method = linkage_method), main = (sprintf('linkage: %s, metric: %s', linkage_method, distance_metric)))
+  }
+}
+```
+
+
+
+```{r E2-Q1.4.1}
+correlation_dist = function(x, method="pearson"){
+  
+  ## complete the function here
+  corr_distance = as.dist((1 - cor(x, method=method))/2)## use the formula from example in ?dist manual here
+  return(corr_distance) ## the class of the return value should be 'dist'
+}
+
+```
+
+
+
+```{r E2-Q1.4.2}
+## calling our correlation_dist() function over the first 3 samples ("BPH_456" "BPH_651" "BPH_652")
+## method: pearson
+round(correlation_dist(count_matrix_filtered_mor_normed[,  1:3], method ='pearson'), 2)
+```
+
+
+
+```{r E2-Q1.4.3}
+## calling our correlation_dist() function over the first 3 samples ("BPH_456" "BPH_651" "BPH_652")
+## method: spearman
+round(correlation_dist(count_matrix_filtered_mor_normed[, 1:3], method ='spearman'), 2)
+```
+
+
+
+```{r E2-Q1.8}
+## add you code here
+plot(hclust(correlation_dist(count_matrix_filtered_mor_normed, method='pearson'), method='complete'))
+```
+
+
+
+```{r E2-Q1.9}
+## add you code here
+plot(hclust(correlation_dist(count_matrix_filtered_mor_normed, method='spearman'), method='complete'))
+```
+
+
+
+## Exercise 3. 
+
+### Principal component analysis (PCA)
+
+```{r hint-4}
+
+# this says that we want to rotate our point 90 degrees counterclockwise.
+# we have to multiply by pi and divide by 180 to convert radian to degrees.
+theta = 90 * pi / 180  
+
+# Here we define our rotation matrix
+rotation = matrix(c(cos(theta), -sin(theta), sin(theta), cos(theta)), byrow = TRUE, nrow = 2)
+
+# Here we plot some lines that are going to help us better see what happens during rotation
+par(pty="s")
+plot(c(-6, 6, -6, 6), c(-6, 6, 6, -6), type='l', xlim=c(-5, 5), ylim=c(-5, 5), xlab='x', ylab='y')
+abline(h=0, v=0)
+
+# This is our point before rotation
+point_before_rotation = matrix(c(1,1), nrow = 1)
+
+# This expression rotates our point 
+point_after_rotation = t(rotation %*% t(point_before_rotation))
+
+points(point_before_rotation, col='red')
+
+points(point_after_rotation, col='green')
+```
+
+
+
+```{r E3-Q2.1}
+## add you code here
+pca_result = prcomp(t(count_matrix_filtered_mor_normed), center = TRUE, scale. = TRUE)
+pca_result
+```
+
+
+```{r E3-Q2.3}
+## add you code here
+
+points = t(t(pca_result$rotation[,1:2]) %*% count_matrix_filtered_mor_normed)
+dim(points)
+points
+```
+
+
+```{r E3-Q2.6}
+## add you code here
+plot(points, col='green')
+points(points[1:5,], col='red')
+```
+
+
+```{r E3-Q2.8}
+## add you code here
+per_var_exp = (pca_result$sdev)**2 / sum((pca_result$sdev)**2) * 100
+barplot(per_var_exp, las = 2, names.arg = colnames(pca_result$rotation), ylim = c(0, 30))
+```
+
+
+```{r E3-Q2.9}
+## add you code here
+round(sum(per_var_exp[1:2]), 2)
+```
+
+
+```{r E3-Q2.11}
+## add you code here
+print(which.max(pca_result$rotation[,1]))
+print(which.min(pca_result$rotation[,1]))
+```
+
+
+
+### Convert Ensmbl gene ID to gene name
+
+``` {r  E3-Q2.14}
+
+to_convert = c('ENSG00000113719', 'ENSG00000172638') ## complete this line with the results you got from E3-Q2.11
+
+
+library('biomaRt')
+mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
+
+mappings <- getBM(
+                  filters= "ensembl_gene_id", 
+                  attributes = c("ensembl_gene_id","hgnc_symbol"),
+                  values=to_convert, 
+                  mart= mart) 
+
+mappings
+```
+
+
+
+## Exercise 4. 
+
+## Data visualization using _ggplot2_ package
+
+```{r E4-Q1.3}
+## add you code here
+library(ggplot2)
+counts_BPH_651_688 <- matrix(c(count_matrix_filtered_mor_normed[,grep('BPH_651', colnames(count_matrix_filtered_mor_normed))], count_matrix_filtered_mor_normed[,grep('BPH_688', colnames(count_matrix_filtered_mor_normed))]), ncol=2)
+counts_BPH_651_688 <- data.frame(counts_BPH_651_688)
+colnames(counts_BPH_651_688) <- c('BPH_651', 'BPH_688')
+counts_BPH_651_688
+ggplot(counts_BPH_651_688) +
+  geom_point(mapping = aes(x = BPH_651, y = BPH_688))
+```
+
+
+
+```{r E4-Q1.4}
+## add you code here
+# adding one
+counts_BPH_651_688_log <- counts_BPH_651_688 + rep(1, ncol(counts_BPH_651_688) * nrow(counts_BPH_651_688))
+counts_BPH_651_688_log <- log2(counts_BPH_651_688_log)
+ggplot(counts_BPH_651_688_log) +
+  geom_point(mapping = aes(x = BPH_651, y = BPH_688))
+```
+
+
+
+```{r E4-Q1.5}
+## add you code here
+counts_PC_9324_17163 <- data.frame(matrix(c(count_matrix_filtered_mor_normed[,grep('PC_9324', colnames(count_matrix_filtered_mor_normed))], count_matrix_filtered_mor_normed[,grep('PC_17163', colnames(count_matrix_filtered_mor_normed))]), ncol=2))
+colnames(counts_PC_9324_17163) <- c('PC_9324', 'PC_17163')
+counts_PC_9324_17163_log <- counts_PC_9324_17163 + rep(1, ncol(counts_PC_9324_17163) * nrow(counts_PC_9324_17163))
+counts_PC_9324_17163_log <- log2(counts_PC_9324_17163_log)
+ggplot(counts_PC_9324_17163_log) +
+  geom_point(mapping = aes(x = PC_9324, y = PC_17163), size=0.5)
+```
+
+
+
+```{r hint-5}
+#ggplot(data = counts_PC_9324_17163_log
+#+ geom_point(mapping = aes(x = PC_9324))
+
+ggplot(data = counts_PC_9324_17163_log)
++ geom_point(mapping = aes(x = PC_9324))
+
+#ggplot(data = counts_PC_9324_17163_log) +
+# geom_point(mapping = aes(x = PC_9324))
+```
+
+
+```{r E4-Q1.9}
+random_sites = read.table(file="/student_data/BBT.BI.202_2022/data/week_2/random_sites.bed", sep='\t')
+#random_sites
+ggplot(data=random_sites)+
+  geom_bar(mapping = aes(x=V6, color=V6)) +  ## complete the code here
+    facet_wrap(~V1) ## complete the code here
+```
+
+
+## Exercise 5. 
+
+```{r E5, echo=TRUE, paged.print=TRUE}
+## add you code here
+pca_result = prcomp(t(count_matrix_filtered_mor_normed), center = TRUE, scale. = TRUE)
+pca_result.var = pca_result$sdev^2
+pca_result.var.per = round(pca_result.var / sum(pca_result.var) * 100, 1)
+library(ggplot2)
+pca_result.data = data.frame(Sample=rownames(pca_result$x),
+                             X=pca_result$x[,1],
+                             Y=pca_result$x[,2])
+ggplot(pca_result.data, aes(x=X, y=Y, label=Sample)) +
+  geom_text() + 
+  xlab(paste('PC1 - ', pca_result.var.per[1], '%', sep='')) +
+  ylab(paste('PC2 - ', pca_result.var.per[2], '%', sep='')) +
+  theme_bw() + 
+  ggtitle('PCA analysis of Prostate cancer gene expression data')
+```
+
+

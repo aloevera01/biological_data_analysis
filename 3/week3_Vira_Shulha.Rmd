@@ -1,0 +1,416 @@
+---
+title: "Exercise set 3"
+author: "Vira, Shulha"
+date: "14/11/2022"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exercise 1
+
+```{r E1-Q1.1}
+## Add your code here 
+count_matrix = readRDS('/student_data/BBT.BI.202_2022/data/week_3/count_matrix_normalized_logged.RDS')
+library(genefilter)
+```
+
+
+
+```{r hint-1}
+## This hint shows an example of how to prepare the factor variable for fac argument in rowttests function. For more information read the manual for ?sub and ?factor 
+cols = c('cat_1', 'cat_2', 'dog_1', 'cat_3', 'dog_2')
+animals =  sub("_[0-9]*", "", cols)
+animals
+animals_fac = factor(animals)
+animals_fac
+```
+
+
+
+```{r E1-Q1.6}
+## Add your code here 
+BPH_PC = colnames(count_matrix)
+BPH_PC_factor = factor(sub("_[0-9]*", "", colnames(count_matrix)))
+ttest_results = rowttests(count_matrix, fac = BPH_PC_factor)
+ttest_results
+```
+
+
+
+```{r E1-Q1.7}
+## Add your code here 
+sum(ttest_results$p.value < 0.05, na.rm = TRUE)
+length(which(ttest_results$p.value < 0.05))
+```
+
+
+
+```{r E1-Q1.8}
+## Add your code here 
+rownames(ttest_results)[which.min(ttest_results$p.value)]
+```
+
+
+
+```{r E1-Q1.9}
+## Add your code here
+hist(ttest_results$p.value)
+```
+
+
+
+```{r E1-Q1.12}
+## Add your code here 
+ttest_results$p.value.adj = p.adjust(ttest_results$p.value, method = "BH")
+ttest_results
+```
+
+
+
+```{r E1-Q1.13}
+## Add your code here 
+sum(ttest_results$p.value.adj < 0.05)
+length(which(ttest_results$p.value.adj < 0.05))
+```
+
+
+
+```{r E1-Q1.14}
+## Add your code here 
+plot(x = ttest_results$p.value, y = ttest_results$p.value.adj)
+abline(h=0.05, v=0.05, col="red")
+plot(x = ttest_results$p.value, y = ttest_results$p.value.adj, log = "xy")
+abline(h=0.05, v=0.05, col="red")
+```
+
+
+
+```{r E1-Q2}
+## Add your code here 
+rownames(ttest_results)[which.min(ttest_results$p.value.adj)]
+ttest_results[order(ttest_results$p.value),]
+```
+
+
+
+## Exercise 2.
+
+```{r E2-Q1-MY_WILCOX}
+
+my_wilcox = function(v, group1, group2) {
+  
+  test_result = wilcox.test(x=v[group1], y=v[group2], exact=FALSE)
+  
+  p.value = test_result$p.value
+  names(p.value) = "p.value"
+  
+  return(c(test_result$statistic, p.value))
+}
+```
+
+
+```{r E2-Q1.4}
+## Add your code here
+#complete the following line by replacing XX, YY, and ZZ
+wilcox_results <- apply(count_matrix, 1, my_wilcox, group1=1:5, group2=6:20)
+wilcox_results_df = as.data.frame(t(wilcox_results)) # note the t()
+sum(wilcox_results_df$p.value < 0.05)
+rownames(wilcox_results_df)[which.min(wilcox_results_df$p.value)]
+```
+
+
+
+```{r E2-Q1.10}
+## Add your code here
+hist(wilcox_results_df$p.value)
+```
+
+
+
+```{r E2-Q1.11}
+## Add your code here
+wilcox_results_df$p.value.adj.BH = p.adjust(wilcox_results_df$p.value, method = "BH")
+sum(wilcox_results_df$p.value.adj.BH < 0.05)
+round(min(wilcox_results_df$p.value.adj.BH), 3)
+```
+
+
+
+```{r E2-Q1.14}
+## Add your code here
+hist(wilcox_results_df$p.value.adj.BH)
+``` 
+
+
+
+```{r E2-Q1.15}
+## Add your code here
+plot(x = wilcox_results_df$p.value, y = wilcox_results_df$p.value.adj.BH)
+abline(h=0.05, v=0.05, col="red")
+plot(x = wilcox_results_df$p.value, y = wilcox_results_df$p.value.adj.BH, log = "xy")
+abline(h=0.05, v=0.05, col="red")
+``` 
+
+
+
+```{r E2-Q1.16}
+## Add your code here
+venn_data = list(ttest = rownames(ttest_results)[ttest_results$p.value.adj < 0.05], wilcox = rownames(wilcox_results_df)[wilcox_results_df$p.value.adj.BH < 0.05])
+library(gplots)
+venn(venn_data)
+``` 
+
+
+
+## Exercise 3.
+
+```{r hint-2}
+# Indexing with row names
+
+# creating two data frames
+df_area = data.frame(area=c(100, 12, 24, 65))
+rownames(df_area) = c("item1", "item2", "item3", "item4")
+df_area
+
+df_qualities = data.frame(shape=c("square", "circle", "triangle", "circle"), color=c("red", "red", "blue", "black"))
+rownames(df_qualities) = c("item1", "item2", "item3", "item4")
+df_qualities
+
+# finding items that have area greater than 50
+area_gt50 = row.names(df_area)[df_area > 50]
+area_gt50
+
+# extracting the qualities information for items whose area was greater than 50
+df_qualities[row.names(df_qualities) %in% area_gt50, ] # note: order matters
+```
+
+
+
+```{r E3-Q1.1}
+## Add your code here
+count_matrix_de_ttest = count_matrix[row.names(count_matrix) %in% row.names(ttest_results)[ttest_results$p.value.adj < 0.05],]
+heatmap(count_matrix_de_ttest, labRow = FALSE)
+```
+
+
+
+```{r E3-Q1.6}
+correlation_dist = function(x, method="pearson"){
+  
+  corr_distance = as.dist((1 - cor(t(x), method=method))/2) ## note the t()
+  
+  return(corr_distance)
+}
+
+## Add your code here
+heatmap(count_matrix_de_ttest, distfun = correlation_dist, labRow = FALSE)
+```  
+
+
+
+```{r E3-Q1.8}
+## Add your code here
+count_matrix_de_wilcox = count_matrix[row.names(count_matrix) %in% row.names(wilcox_results_df)[wilcox_results_df$p.value.adj < 0.05],]
+heatmap(count_matrix_de_wilcox, labRow = FALSE)
+``` 
+
+
+
+```{r E3-Q1.9}
+## Add your code here
+heatmap(count_matrix_de_wilcox, distfun = correlation_dist, labRow = FALSE)
+``` 
+
+
+
+```{r E3-Q1.10}
+## Add your code here
+p_val_below = ttest_results$p.value.adj < 0.05
+dm_greater = abs(ttest_results$dm) > 1
+both = p_val_below & dm_greater
+sum(both)
+``` 
+
+
+
+```{r E3-1.12}
+## Add your code here
+plot(ttest_results[!both, 2], ttest_results[!both, 4], col = "black")
+points(ttest_results[p_val_below, 2], ttest_results[p_val_below, 4], col = "green")
+points(ttest_results[dm_greater, 2], ttest_results[dm_greater, 4], col = "blue")
+points(ttest_results[both, 2], ttest_results[both, 4], col = "red")
+``` 
+
+
+```{r E3-Q1.13}
+## Add your code here
+heatmap(count_matrix[both,], distfun = correlation_dist, labRow = FALSE)
+``` 
+
+
+## Exercise 4.
+
+```{r hint-3}
+## caculating how long a for-loop takes to run
+ptm <- proc.time()
+
+NUMPERMS=500
+
+means = c()
+
+for (i in 1:NUMPERMS) {
+  means[i] = mean(stats::runif(500))
+}
+
+proc.time() - ptm # we are interested in the elapsed time
+c(1:20)
+```
+
+
+
+```{r hint-4}
+## observing how -index shorthand works
+#samples = paste("sample", 1:10, sep="_") # This creates 10 samples in the form sample_i
+#samples
+#index = c(1, 5, 6)
+#samples[index]
+#samples[-index]
+```
+
+
+
+```{r E4-Q1.3}
+set.seed(777) ## do not remove or modify this otherwise your answer will/may not be accepted.
+## Add your code here
+perm_stats = c()
+NUMPERMS=500
+
+for(i in 1:NUMPERMS)
+{
+  perm_sample = sample(1:20, size = 5, replace = FALSE)
+  bph_sample = count_matrix[1, perm_sample]
+  pc_sample = count_matrix[1, -perm_sample]
+  perm_stats[i] = t.test(bph_sample, pc_sample)$statistic
+}
+p_value = mean(ttest_results$statistic[1] < abs(perm_stats))
+round(mean(perm_stats), 2)
+round(p_value, 3)
+``` 
+
+
+
+```{r E4-Q1.4}
+
+calculate_pvalue_by_permutation = function(x, n=50, k=10, test_statistic=0, NUMPERMS=1e3, seed = NULL) {
+  
+  set.seed(seed) # keep this line
+  
+  ## Complete the code here by modifying your code in E4-Q1.3
+  
+  perm_stats = c()
+
+  for(i in 1:NUMPERMS)
+  {
+    perm_sample = sample(1:n, size = k, replace = FALSE)
+    bph_sample = x[perm_sample]
+    pc_sample = x[-perm_sample]
+    perm_stats[i] = t.test(bph_sample, pc_sample)$statistic
+  }
+  
+  p_value = mean(test_statistic < abs(perm_stats))
+  return(p_value)
+}
+
+``` 
+
+
+
+```{r E4-Q1.5}
+calculate_pvalue_by_permutation(x = count_matrix[1, ],
+                                n = 20,
+                                k = 5,
+                                test_statistic = ttest_results[1, ]$statistic,
+                                NUMPERMS=500,
+                                seed = 777) # do not modify the seed
+```
+
+
+
+```{r E4-Q1.6}
+## Add your code here
+permutation_p_values = c()
+for (gene in 1:length(row.names(count_matrix))){
+  permutation_p_values[gene] = calculate_pvalue_by_permutation(count_matrix[gene, ],
+                                  n = 20,
+                                  k = 5,
+                                  test_statistic = ttest_results[gene, ]$statistic,
+                                  NUMPERMS = 500,
+                                  seed = 777)
+}
+permutation_p_values
+``` 
+```{r E4-Q1.6_1}
+permutation_p_values = data.frame(p_val = permutation_p_values$p_val.p_val.p_val.c.0.006..1..0.282..1..1..0.586..1..1..0.054..0.754..0.02..1.., row.names = row.names(count_matrix))
+permutation_p_values
+```
+
+
+
+```{r E4-Q1.7}
+## Add your code here
+hist(permutation_p_values$p_val)
+min(permutation_p_values)
+``` 
+
+
+
+```{r E4-Q1.9}
+## Add your code here
+venn_data$permuted = row.names(permutation_p_values)[permutation_p_values$p_val < 0.05]
+venn(venn_data)
+``` 
+
+
+
+## Exercise 5.
+
+```{r E5-Q1.1}
+## Add your code here
+hist(ttest_results$p.value, freq = FALSE)
+abline(v=0.5, col = 'red')
+abline(h=0.55, col = 'green')
+``` 
+
+
+
+```{r E5-Q1.2}
+## Add your code here
+lambda = 0.5
+pi_0 = length(which(ttest_results$p.value > lambda)) / (length(row.names(ttest_results)) * (1 - lambda))
+round(pi_0, 2)
+pi_0
+``` 
+
+
+
+```{r E5-Q1.4}
+## Add your code here
+alpha = 0.05
+false_positive = pi_0 * length(row.names(ttest_results)) * alpha
+false_positive
+``` 
+
+
+
+```{r E5-Q1.5}
+## Add your code here
+positives = length(which(ttest_results$p.value < 0.05))
+fdr = false_positive / positives
+round(fdr, 2)
+``` 

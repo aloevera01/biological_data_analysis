@@ -1,0 +1,331 @@
+---
+title: "Exercise set 4"
+author: "Vira, Shulha"
+date: "22/11/2022"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exercise 1
+
+```{r E1-Q1.1}
+## Add your code here 
+library(GO.db)
+library(help="GO.db")
+```
+
+
+
+
+```{r E1-Q2.1}
+## Add your code here 
+# we can find terms which contain fatty acid oxidation, so we can use ^ for selecting for exact match
+found_keys = keys(GO.db, pattern = 'fatty acid oxidation', column = "TERM")
+found_keys
+columns(GO.db)[c(2:4)]
+```
+
+
+
+```{r E1-Q2.2}
+## Add your code here 
+GO_results = select(GO.db, keys = found_keys, columns = columns(GO.db)[c(2:4)])
+GO_results
+```
+
+
+
+```{r E1-Q2.5}
+## Add your code here 
+selected_key = keys(GO.db, pattern = '^fatty acid oxidation', column = "TERM")
+selected_key_children = as.list(GOBPCHILDREN[selected_key])
+select(GO.db, keys = selected_key_children[[1]], column = "TERM")
+```
+
+
+
+```{r E1-Q2.7}
+## Add your code here 
+selected_key_offspring = as.list(GOBPOFFSPRING[selected_key])
+select(GO.db, keys = selected_key_offspring[[1]], column = "TERM")
+```
+
+
+
+## Exercise 2.
+
+```{r E2-Q1.1}
+## Add your code here
+count_matrix = readRDS('/student_data/BBT.BI.202_2022/data/week_4/count_matrix_normalized_logged.RDS')
+```
+
+
+
+```{r E2-Q1.2}
+## Add your code here
+library(biomaRt)
+#row.names(count_matrix)
+mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
+
+mappings <- getBM(
+                  filters= "ensembl_gene_id",
+                  attributes = c("go_id", "ensembl_gene_id"),
+                  values=row.names(count_matrix), 
+                  mart= mart)
+```
+
+
+
+```{r E2-Q1.2-continued}
+length(mappings$go_id)
+```
+
+
+```{r E2-Q1.4}
+## Add your code here
+length(match(unique(mappings$ensembl_gene_id), row.names(count_matrix)))
+```
+
+
+
+```{r E2-Q1.5}
+## Add your code here
+GO_count_table = sort(table(mappings$go_id), decreasing = TRUE)
+GO_count_table
+```
+
+
+
+```{r E2-Q1.7}
+## Add your code here
+mappings_cleaned = mappings[mappings$go_id != "",]
+length(unique(mappings_cleaned$ensembl_gene_id))
+```
+
+
+```{r E2-Q1.9}
+## Add your code here
+mappings_cleaned$go_ontology = select(GO.db, keys = mappings_cleaned$go_id, columns = "ONTOLOGY")$ONTOLOGY
+mappings_cleaned_BP = mappings_cleaned[mappings_cleaned$go_ontology == 'BP',]
+length(unique(mappings_cleaned_BP$ensembl_gene_id))
+``` 
+
+
+## Exercise 3.
+
+
+```{r E3-Q1.1}
+## Add your code here
+N = length(mappings_cleaned_BP$go_id)
+N
+```
+
+
+
+```{r E3-Q1.3}
+## Add your code here
+gene_list = readRDS('/student_data/BBT.BI.202_2022/data/week_4/DE_genes_PC_vs_BPH.RDS')
+```  
+
+
+
+```{r E3-Q1.4}
+## Add your code here
+mappings_cleaned_BP_de = mappings_cleaned_BP[which((mappings_cleaned_BP$ensembl_gene_id %in% row.names(gene_list)) == TRUE),1]
+M = length(mappings_cleaned_BP_de)
+M
+``` 
+
+
+
+```{r E3-Q1.6}
+## Add your code here
+all_go_terms = c("GO:0019395", as.list(GOBPOFFSPRING["GO:0019395"])[[1]])
+length(all_go_terms)
+```
+
+
+
+```{r E3-Q1.8}
+## Add your code here
+n = length(which((mappings_cleaned_BP$go_id %in% all_go_terms) == TRUE))
+n
+```
+
+
+
+```{r E3-Q1.10}
+## Add your code here
+k = length(which(((mappings_cleaned_BP[mappings_cleaned_BP$ensembl_gene_id %in% mappings_cleaned_BP_de,]$go_id)) %in% all_go_terms))
+#mappings_cleaned_BP[mappings_cleaned_BP$ensembl_gene_id[mappings_cleaned_BP_de],]$go_id
+k
+```
+
+
+
+```{r E3-Q1.12}
+## Add your code here
+contingency_table = matrix(nrow = 2, c(N - M - (n - k), M - k, n - k, k))
+rownames(contingency_table) = c("Not significant", "Significant")
+colnames(contingency_table) = c("Other GO terms", "GO term of interest")
+contingency_table
+```
+
+
+
+```{r E3-Q1.13}
+## Add your code here
+a = fisher.test(contingency_table, alternative = "greater")
+round(a$p.value, 2)
+``` 
+
+
+
+```{r E3-Q1-HYPERGEOMETRIC-EXAMPLE}
+density = dhyper(0:n, M, N-M, n)
+plot(0:n, density, xlab="n")
+points(k, density[k+1], col="red") # note k+1 because we start from 0 in the line above
+``` 
+
+
+
+```{r E3-Q1-HYPERGEOMETRIC-EXAMPLE-PVALUE}
+## two other ways to calculate p-value without using Fisher's exact test
+sum(dhyper(k:n, M, N-M, n)) # one-tailed
+1- phyper(k-1, M, N-M, n) # one-tailed
+``` 
+
+
+
+```{r E3-Q1.15}
+## Add your code here
+on_gene_list = mappings_cleaned_BP$ensembl_gene_id %in% row.names(gene_list)
+related_to_go = mappings_cleaned_BP$go_id %in% all_go_terms
+contingency_table_alter = table(on_gene_list, related_to_go)
+contingency_table_alter
+``` 
+
+
+
+## Exercise 4.
+
+
+```{r E4-Q1.1}
+set.seed(3568) ## Do not change this. Otherwise there is a chance that your answer will not be accepted
+## Add your code here
+ks_for_samples = c()
+NUMPERMS = 2000
+
+for (i in 1:NUMPERMS){
+  mappings_cleaned_bp_sample = mappings_cleaned_BP[sample.int(n = dim(mappings_cleaned_BP)[[1]], size = M, replace = FALSE),]
+  ks_for_samples[i] = length(mappings_cleaned_bp_sample[mappings_cleaned_bp_sample$go_id %in% all_go_terms, 2])
+}
+``` 
+
+
+
+```{r hint-1}
+set.seed(845)
+thresh = 5
+some_random_values = sample.int(n=20, size=200, replace = TRUE)
+some_random_values_table = table(some_random_values)
+par(las=2)
+barplot(some_random_values_table, col = as.integer(rownames(some_random_values_table)) >= thresh)
+```
+
+
+
+```{r E4-Q1.2}
+## Add your code here
+ks_for_samples_table = table(ks_for_samples)
+ks_for_samples_table_normed = ks_for_samples_table / NUMPERMS
+``` 
+
+
+
+```{r E4-Q1.3}
+## Add your code here
+par(las=2)
+barplot(ks_for_samples_table_normed, col = as.integer(row.names(ks_for_samples_table_normed)) >= k, xlab = "k", ylab = "Density")
+```
+
+
+
+```{r E4-Q1.4}
+## Add your code here
+#p_greater_k = length(ks_for_samples_table[ks_for_samples_table >= k]) / length(ks_for_samples_table)
+#p_greater_k
+p_greater_k = sum(ks_for_samples_table_normed[as.integer(rownames(ks_for_samples_table_normed)) >= k])
+p_greater_k
+```
+
+
+
+## Exercise 5.
+
+```{r hint-2}
+object_names = c("book", "pen", "paper")
+object_positions = c()
+
+for (i in seq_along(object_names)){
+  
+  object_positions[i] = sprintf("%s: %s", i, object_names[i])
+
+}
+
+names(object_positions) = object_names
+
+object_positions
+```
+
+
+```{r exercise-5-task-2}
+## Add your code here
+library(biomaRt)
+mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
+
+mappings_chr <- getBM(
+                  filters= "ensembl_gene_id",
+                  attributes = c("chromosome_name", "ensembl_gene_id"),
+                  values=row.names(count_matrix), 
+                  mart= mart)
+#mappings_chr <- useDataset("hsapiens_gene_ensembl", useMart("chromosome_name"))
+mappings_chr
+``` 
+
+
+
+```{r exercise-5-task-3}
+## Add your code here
+on_gene_list_chr = mappings_chr$ensembl_gene_id %in% row.names(gene_list)
+chromosome_names = unique(mappings_chr$chromosome_name)
+chromosome_enrichment_pvalues = c()
+for (i in seq_along(chromosome_names)){
+  related_to_chr = mappings_chr$chromosome_name %in% chromosome_names[i]
+  contingency_table_chr = table(on_gene_list_chr, related_to_chr)
+  chromosome_enrichment_pvalues[i] = fisher.test(contingency_table_chr, alternative = "greater")$p.value
+}
+names(chromosome_enrichment_pvalues) = chromosome_names
+sort(chromosome_enrichment_pvalues)
+round(0.05851519, 3)
+``` 
+
+
+
+```{r exercise-5-task-4}
+## Add your code here
+enrichment_score = - log10(chromosome_enrichment_pvalues)
+enrichment_score = sort(enrichment_score, decreasing = TRUE)
+par(las=2)
+barplot(enrichment_score, xlab = "Chromosome name", ylab = "Enrichment score", ylim = c(0, 2.5))
+abline(h=1.30103, col = 'red')
+-log10(0.05)
+``` 
+
+

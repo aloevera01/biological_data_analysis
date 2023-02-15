@@ -1,0 +1,357 @@
+---
+title: "Exercise set 5"
+author: "Vira, Shulha"
+date: "27/11/2022"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Exercise 1. Creating graphs and visualization
+
+```{r E1-Q2.1}
+## Add your code here
+library(graph)
+#library(help = "graph")
+data("MAPKsig")
+print(1)
+numNodes(MAPKsig)
+print(2)
+numEdges(MAPKsig)
+print(3)
+edgeL(MAPKsig)$RALA
+print(4)
+adj(MAPKsig, index="BAD")
+```
+
+
+
+```{r hint-1}
+## Creating a graphNEL that shows the distances among 3 major cities in Finland
+V <- c("Tampere", "Helsinki", "Turku")
+edL = list(Tampere=list(edges=c("Helsinki", "Turku"), weights=c(178, 164)), 
+           Turku=list(edges=c("Tampere", "Helsinki"), weights=c(164, 169)),
+           Helsinki=list(edges=c("Tampere", "Turku"), weights=c(178, 169))
+           )
+cities = graphNEL(nodes=V, edgeL=edL)
+cities
+plot(cities)
+```
+
+
+
+```{r hint-2}
+## If value is equal to 7, we win, everything else we lose!
+values = c(1:10)
+result = list()
+for (value in values){
+  if (value == 7) {
+    result[[value]] = "Win!"
+  }
+  else {
+    result[[value]] = "Loss!"
+  }
+}
+result
+```
+
+
+
+```{r E1-Q3.1}
+## Add your code here
+V = c("GO:0019395", as.list(GOBPCHILDREN["GO:0019395"])[[1]])
+nnn = rbind(c(character(0)), c(character(0)), c(character(0)), c(character(0)),c(character(0)),c(character(0)),c(character(0)))
+E = list()
+for (i in 1:length(V)) E[[i]] = list(edges=c(character(0)))
+names(E) = V
+for (i in 1:length(V)){
+  if (names(E)[i] != "GO:0019395"){
+    E[[1]]$edges = append(E[[1]]$edges, names(E)[i])
+  }
+}
+E
+G = graphNEL(nodes=V, edgeL=E, edgemode='directed')
+plot(G)
+```
+
+
+
+## Exercise 2. Pathway enrichment analysis (MAPK signaling pathway)
+
+```{r E2-Q1.1}
+## Add your code here
+count_matrix = readRDS("/student_data/BBT.BI.202_2022/data/week_5/count_matrix_normalized_logged.RDS")
+gene_list = readRDS("/student_data/BBT.BI.202_2022/data/week_5/DE_genes_PC_vs_BPH.RDS")
+count_matrix
+```
+
+
+
+```{r E2-Q1.2}
+## Add your code here
+library(biomaRt)
+mart = useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
+
+mappings_ensembl_entrez = getBM(
+                  filters= "ensembl_gene_id",
+                  attributes = c("entrezgene_id", "ensembl_gene_id"),
+                  values=row.names(count_matrix), 
+                  mart= mart)
+mappings_ensembl_entrez
+```
+
+
+
+```{r E2-Q1.3}
+library(org.Hs.eg.db)
+map_ke <- as.list(org.Hs.egPATH)
+kegg_entrez_pathway = map_ke[!is.na(match(mappings_ensembl_entrez$entrezgene_id, names(map_ke)))]
+
+ensembl2kegg_pathway = list()
+for (i in 1:nrow(mappings_ensembl_entrez)) {
+  temp = kegg_entrez_pathway[as.character(mappings_ensembl_entrez[i, ]$entrezgene_id)]
+  if (!is.na(names(temp))){
+    ensembl2kegg_pathway[mappings_ensembl_entrez[i, ]$ensembl_gene_id] = temp
+  } 
+}
+ensembl2kegg_pathway
+```
+
+
+
+### Pathway enrichment
+
+```{r E2-Q1.4}
+## Add your code here
+
+```
+
+
+
+#### Calculate N
+
+```{r hint-3}
+l = list(g1=c('p1'),
+         g2=c('p2', 'p3'), # g2 is assigned to two ps.
+         g3=c('p1'),
+         g4= NA   # g4 is not assigned to any p.
+         )
+l
+unlist(l) # check how the gene names are modified
+sum(!is.na(unlist(l)))
+```
+
+
+
+
+```{r E2-Q1.6}
+## Add your code here
+N = sum(!is.na(unlist(ensembl2kegg_pathway)))
+N
+```
+
+
+
+#### Calculate n for our pathway
+
+```{r hint-4}
+l = list(g1=c('p1'),
+         g2=c('p2', 'p3'), # g2 is assigned to two ps.
+         g3=c('p1'),
+         g4= NA   # g4 is not assigned to any p.
+         )
+
+l_table = table(unlist(l))
+l_table
+l_table["p3"]
+```
+
+
+
+```{r E2-Q1.8}
+## Add your code here
+n = table(unlist(ensembl2kegg_pathway))["04010"][[1]]
+n
+```
+
+
+
+#### Calculate M
+
+```{r E2-Q1.10}
+## Add your code here
+ensembl2kegg_pathway_de = ensembl2kegg_pathway[names(ensembl2kegg_pathway) %in% rownames(gene_list)]
+M = sum(!is.na(unlist(ensembl2kegg_pathway_de)))
+M
+```
+
+
+
+#### Calculate k for our pathway
+
+```{r E2-Q1.12}
+## Add your code here
+k = table(unlist(ensembl2kegg_pathway_de))["04010"][[1]]
+k
+```
+
+
+
+#### Calculate enrichment P-values
+
+```{r E2-Q1.14}
+## Add your code here
+contingency_table = matrix(nrow = 2, c(N - M - (n - k), M - k, n - k, k))
+rownames(contingency_table) = c("Not significant", "Significant")
+colnames(contingency_table) = c("Other GO terms", "GO term of interest")
+contingency_table
+a = fisher.test(contingency_table, alternative = "greater")
+round(a$p.value, 2)
+```
+
+
+
+## Exercise 3. Pathway visualization
+
+#### Calculate mean difference between PC and BPH used by pathview i.e. `gene.data`
+
+```{r E3-Q2.1}
+## Add your code here
+
+count_matrix_mean_diff  = apply(count_matrix[,6:20], 1, mean) - apply(count_matrix[,1:5], 1, mean)
+
+sort(abs(count_matrix_mean_diff), decreasing = TRUE)[1:5]
+sort((count_matrix_mean_diff))[1]
+```
+
+
+
+
+```{r E3-Q2.4}
+## Add your code here
+#length(unique(names(unlist(ensembl2kegg_pathway)[which((unlist(ensembl2kegg_pathway) == "04010") == TRUE)])))
+pathview(gene.data = as.data.frame(count_matrix_mean_diff), out.suffix = "MAPK_signaling", limit = list(gene=2, cpd=1), pathway.id = "04010", gene.idtype = "ENSEMBL")
+#data(golub)
+#golDiff=apply(golub[,1:27],1,median)-apply(golub[,28:38],1,median) 
+#pv.out=pathview(gene.data=golDiff, pathway.id="04062",species="hsa", limit=list(gene=2,cpd=1), out.suffix="golDiff", #kegg.native=T)
+
+```
+
+
+
+## Exercise 4. R script interpretation
+
+```{r E4-Q1.1}
+library(org.Hs.eg.db)
+#class(org.Hs.egPATH)
+#typeof(org.Hs.egPATH)
+map_ke <- as.list(org.Hs.egPATH)
+
+kegg_entrez_pathway = map_ke[!is.na(match(mappings_ensembl_entrez$entrezgene_id, names(map_ke)))]
+#typeof(kegg_entrez_pathway)
+#nrow(mappings_ensembl_entrez)
+#class(mappings_ensembl_entrez[2, ])
+#mappings_ensembl_entrez[2, ]$entrezgene_id
+#typeof(mappings_ensembl_entrez[2, ]$entrezgene_id)
+#typeof(kegg_entrez_pathway[as.character(mappings_ensembl_entrez[5, ]$entrezgene_id)])
+#!is.na(names(temp))
+#a = kegg_entrez_pathway[as.character(mappings_ensembl_entrez[4045, ]$entrezgene_id)]
+#!is.na(names(a))
+#mappings_ensembl_entrez[which((is.na(mappings_ensembl_entrez$entrezgene_id)) == TRUE),]
+
+ensembl2kegg_pathway = list()
+for (i in 1:nrow(mappings_ensembl_entrez)) {
+  entrez_id_i = mappings_ensembl_entrez[i, ]$entrezgene_id
+  kegg_entrez_id_i = kegg_entrez_pathway[as.character(entrez_id_i)]
+  names_kegg_entrez_id_i = names(kegg_entrez_id_i)
+  
+  if (!is.na(names_kegg_entrez_id_i)){
+    ensembl2kegg_pathway[mappings_ensembl_entrez[i, ]$ensembl_gene_id] = kegg_entrez_id_i
+  } 
+}
+```
+
+```{r E4-Q.1.1 refactored}
+library(org.Hs.eg.db)
+
+map_ke <- as.list(org.Hs.egPATH)
+kegg_entrez_pathway = map_ke[!is.na(match(mappings_ensembl_entrez$entrezgene_id, names(map_ke)))]
+
+ensembl2kegg_pathway = list()
+
+for (i in 1:nrow(mappings_ensembl_entrez)) {
+  entrez_id_i = mappings_ensembl_entrez[i, ]$entrezgene_id
+  kegg_entrez_id_i = kegg_entrez_pathway[as.character(entrez_id_i)]
+  
+  names_kegg_entrez_id_i = names(kegg_entrez_id_i)
+
+  if (!is.na(names_kegg_entrez_id_i)){
+    ensembl2kegg_pathway[mappings_ensembl_entrez[i, ]$ensembl_gene_id] = kegg_entrez_id_i
+  } 
+}
+```
+
+
+## Exercise 5. Pathway enrichment analysis; many pathways
+
+### Calculate n for all pathways
+
+```{r E5-Q1.1}
+## Add your code here
+ns = table(unlist(ensembl2kegg_pathway))
+ns
+```
+
+
+
+### Calculate k for all pathways
+
+```{r E5-Q1.2}
+## Add your code here
+ks = rep(0, length(ns))
+ks_res = table(unlist(ensembl2kegg_pathway_de))
+names(ks) = names(ns)
+ks[names(ks_res)] = ks_res
+ks
+```
+
+
+
+### Calculate pathway enrichment P-values
+
+```{r E5-Q1.3}
+## Add your code here
+p_vals = 1 - phyper(ks - 1, M, N-M, ns)
+round(sort(p_vals)[[1]], 5)
+```
+
+
+### Significant pathways
+
+```{r E5-Q1.5}
+## Add your code here
+sum(p_vals < 0.05)
+```
+
+
+
+```{r E5-Q1.7}
+## Add your code here
+enriched_p_vals = sort(p_vals[p_vals < 0.05])
+enriched_p_vals_df = data.frame(pathway_identifiers = names(enriched_p_vals), p_value = enriched_p_vals)
+enriched_p_vals_df
+```
+
+
+
+```{r E5-Q1.9}
+## Add your code here
+VEGF_id = "04370"
+round(p_vals[VEGF_id], 3)
+```
+

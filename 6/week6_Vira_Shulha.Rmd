@@ -1,0 +1,332 @@
+---
+title: "Exercise set 6"
+author: "Vira, Shulha"
+date: "06/12/2022"
+output:
+  html_document: default
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exercise 1. Survival analysis: Kaplan-Meier curves
+
+```{r E1-Q1.1}
+## Add your code here
+clinical_data = read.csv('/student_data/BBT.BI.202_2022/data/week_6/prad_MSKCC_2010_subset.tsv', sep = '\t')
+clinical_data[1:5,]
+```
+
+
+
+```{r E1-Q1.2}
+## Add your code here
+library(survival)
+library(survminer)
+```
+
+
+
+```{r hint-1}
+df = data.frame(id = c(1, 2, 3, 4),
+                status = c("D", "A", "A", "A")
+                )
+df$new_col = ifelse(df$status == "A", 0, 1)
+df
+```
+
+
+
+```{r E1-Q1.7}
+## Add your code here
+clinical_data$censored = ifelse(clinical_data$DFS == "0:DiseaseFree", 0, 1)
+clinical_data[1:5,]
+```
+
+
+
+```{r E1-Q1.8}
+## Add your code here
+surv_obj = Surv(clinical_data$DFM, clinical_data$censored)
+surv_obj
+```
+
+
+
+```{r E1-Q1.9}
+## Add your code here
+surv_obj_fit_all = survfit(surv_obj ~ 1, data = clinical_data, stype = 1, ctype = 1)
+surv_obj_fit_all
+```
+
+
+
+```{r E1-Q1.10}
+## Add your code here
+summary(surv_obj_fit_all)$table
+```
+
+
+
+
+```{r E1-Q1.15}
+## Add your code here
+ggsurvplot(surv_obj_fit_all, surv.median.line = "hv", risk.table = "abs_pct")
+```
+
+
+
+
+```{r E1-Q1.17}
+## Add your code here
+surv_obj_fit_st = survfit(surv_obj ~ ST, data = clinical_data, stype = 1, ctype = 1)
+summary(surv_obj_fit_st)$table
+round(13.52, 1)
+```
+
+
+
+```{r E1-Q1.19}
+## Add your code here
+ggsurvplot(surv_obj_fit_st, surv.median.line = "hv", risk.table = "abs_pct")
+```
+
+
+
+```{r E1-Q1.21}
+## Add your code here
+survdiff(surv_obj ~ ST, data = clinical_data)
+```
+
+
+
+## Exercise 2. Survival analysis: Cox proportional hazards regression
+
+```{r E2-Q1.1}
+## Add your code here
+table(clinical_data$GS)
+clinical_data$GS_binary = ifelse(clinical_data$GS <= 7, 'low', 'high')
+table(clinical_data$GS_binary)
+```
+
+
+
+```{r  E1-Q1.3}
+## Add your code here
+table(clinical_data$ERG)
+```
+
+
+
+```{r E2-NOTE1}
+table(table(clinical_data$DFM)) # first, run this
+table(clinical_data$DFM) # next, uncomment and run this
+```
+
+
+
+```{r E2-Q1.7}
+## Add your code here
+coxph_fit = coxph(surv_obj~ST + ERG + GS_binary, data = clinical_data)
+coxph_fit
+```
+
+
+
+```{r E2-Q1.8}
+## Add your code here
+prop_hazard_test_result = cox.zph(coxph_fit)
+prop_hazard_test_result)
+```
+
+
+
+```{r E2-Q1.10}
+## Add your code here
+summary(coxph_fit)
+```
+
+
+
+```{r E2-Q1.14}
+## Add your code here
+ggforest(coxph_fit)
+```
+
+
+```{r E2-NOTE2}
+ggcoxzph(prop_hazard_test_result, var="ST")
+ggcoxzph(prop_hazard_test_result, var="GS")
+ggcoxzph(prop_hazard_test_result, var="ERG")
+```
+
+
+
+## Exercise 3. Bioconductor databases
+
+```{r E3-Q1.1}
+## Add your code here
+library(org.Hs.eg.db)
+library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+```
+
+
+
+```{r E3-Q1.2}
+## Add your code here
+FOXA1_key = select(org.Hs.eg.db, keys = "FOXA1", columns = "ENTREZID", keytype = "ALIAS")$ENTREZID
+FOXA1_key
+```
+
+
+
+```{r E3-Q1.4}
+## Add your code here
+transcripts = select(TxDb.Hsapiens.UCSC.hg19.knownGene, keys = FOXA1_key, columns = c("GENEID", "TXCHROM", "TXSTART", "TXEND", "TXID", "EXONSTART","EXONEND"), keytype = "GENEID")
+transcripts
+```
+
+
+
+```{r E3-Q1.8}
+## Add your code here
+library(BSgenome.Hsapiens.UCSC.hg19)
+library(GenomicRanges)
+#library(help = "BSgenome.Hsapiens.UCSC.hg19")
+gene_coordinates = genes(TxDb.Hsapiens.UCSC.hg19.knownGene)
+FOXA1_sequence = getSeq(BSgenome.Hsapiens.UCSC.hg19, gene_coordinates[gene_coordinates$gene_id == FOXA1_key])
+FOXA1_base_frequency = alphabetFrequency(FOXA1_sequence)
+class(FOXA1_base_frequency)
+```
+
+
+
+```{r E3-Q1.13}
+## Add your code here
+round((FOXA1_base_frequency[1,"G"] + FOXA1_base_frequency[1, "C"]) / sum(FOXA1_base_frequency[1,]), 2)
+```
+
+
+
+## Exercise 4. biomaRt online databases
+
+```{r E4-Q1.1}
+## Add your code here
+count_matrix = readRDS("/student_data/BBT.BI.202_2022/data/week_6/count_matrix_normalized_logged.RDS")
+count_matrix[1:5,]
+```
+
+
+
+```{r E4-Q1.2}
+## Add your code here
+library(biomaRt)
+mart = useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
+
+mappings_ensembl_entrez = getBM(
+                  filters= "ensembl_gene_id",
+                  attributes = c("entrezgene_id", "ensembl_gene_id"),
+                  values=row.names(count_matrix), 
+                  mart= mart)
+mappings_ensembl_entrez
+```
+
+
+
+```{r E4-Q1.3}
+## Add your code here
+library(org.Hs.eg.db)
+```
+
+
+
+```{r E4-Q1.7}
+## Add your code here
+xx = as.list(org.Hs.egENSEMBL2EG)
+#rownames(count_matrix)
+mappings_ensembl_entrez_from_package = xx[names(xx) %in% rownames(count_matrix)]
+type(mappings_ensembl_entrez[1,2])
+```
+
+
+
+```{r E4-Q1.8}
+## Add your code here
+mappings_ensembl_entrez_from_package_df = as.data.frame(t(as.data.frame(mappings_ensembl_entrez_from_package)))
+
+colnames(mappings_ensembl_entrez_from_package_df) = c('one', 'two')
+
+mappings_ensembl_entrez_from_package_df= data.frame(entrezgene_id = as.integer(mappings_ensembl_entrez_from_package_df$one), ensembl_gene_id = row.names(mappings_ensembl_entrez_from_package_df))
+
+only_in_package = setdiff(mappings_ensembl_entrez_from_package_df, mappings_ensembl_entrez)
+only_in_package
+```
+
+
+
+
+```{r E4-Q1.9}
+## Add your code here
+only_in_original = setdiff(mappings_ensembl_entrez, mappings_ensembl_entrez_from_package_df)
+#only_in_original
+sum(mappings_ensembl_entrez_from_package_df$ensembl_gene_id %in% mappings_ensembl_entrez$ensembl_gene_id)
+sum(mappings_ensembl_entrez$ensembl_gene_id %in% mappings_ensembl_entrez_from_package_df$ensembl_gene_id)
+```
+
+
+```{r E4-Q1.10}
+## Add your code here
+venn_data = list(from_package = mappings_ensembl_entrez_from_package_df$ensembl_gene_id, from_biomaRt = mappings_ensembl_entrez$ensembl_gene_id, from_count_matrix = rownames(count_matrix))
+library(gplots)
+venn(venn_data)
+```
+
+
+
+## Exercise 5. Data preparation and R script interpretation
+```{r E5-Q.1.2}
+patient_data = read.csv('data_clinical_patient.txt', skip = 4, sep = '\t')
+sample_data = read.csv('data_clinical_sample.txt', skip = 4, sep = '\t')
+#length(patient_data[patient_data$DFS_STATUS == "1:Recurred",1])
+#length(sample_data[sample_data$SAMPLE_TYPE == "Metastasis",1])
+length(sample_data[sample_data$SAMPLE_TYPE == "Metastasis" & sample_data$COMPLETE_DATA == "Yes",1])
+```
+
+```{r preparing-data}
+data = read.table("/student_data/BBT.BI.202_2022/data/week_6/prad_mskcc_clinical_data.tsv", 
+                   sep = "\t", 
+                   header = TRUE, 
+                   stringsAsFactors = FALSE)
+data = data[(data$Disease.Free.Status != ""), ]
+
+data = data[, c("Patient.ID",
+                "Sample.Type",
+                "Disease.Free..Months.",
+                "Disease.Free.Status",
+                "ERG.Fusion.ACGH",
+                "Radical.Prostatectomy.Gleason.Score.for.Prostate.Cancer")
+             ]
+
+colnames(data) = c("PID",
+                    "ST",
+                    "DFM",
+                    "DFS",
+                    "ERG",
+                    "GS")
+length(data[,1])
+data = data[complete.cases(data), ]
+
+data
+# 
+# data = data[data$GL != "Tx_Effects", ]
+# data = data[data$GL != "", ]
+# 
+# write.table(data, 
+#             file = "prad_MSKCC_2010.tsv", 
+#             sep = "\t", 
+#             quote = FALSE)
+```
+

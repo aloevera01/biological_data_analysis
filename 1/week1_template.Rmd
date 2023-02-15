@@ -1,0 +1,283 @@
+---
+title: "Exercise set 1"
+author: "firstname,  lastname"
+date: "dd/mm/yyyy"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("/student_data/BBT.BI.202_YEAR/students/USERNAME/week_1")
+```
+
+## Exercise 1
+
+
+### 2
+```{r E1-Q2}
+a = 1L
+b = 1
+c = c(TRUE, FALSE, FALSE)
+d = list("sample1", TRUE, c(1,2,3))
+e = factor(c("type1", "type1", "type2", "type2", "type1"))
+f = data.frame(c("type1", "type2"), c(1,2))
+g = matrix(1:4, nrow=2)
+is.vector(a)
+```
+
+
+### 3
+```{r E1-Q3}
+## Add you code here
+
+```
+
+
+
+## Exercise 2
+
+
+
+### 1.4
+```{r E2-Q1.4}
+v = 1:4
+data_by_row = matrix(v, nrow=2, byrow = TRUE)
+data_by_col = matrix(v, nrow=2, byrow = FALSE)
+# complete the code here
+
+```
+
+
+
+### 3.1
+```{r E2-Q3.1}
+set.seed(111) ## setting the random seed! Do not modify this line!
+data = matrix(sample(50:70, size=70, replace = TRUE), ncol=7)
+# complete the code here
+
+```
+
+
+
+### 3.2
+```{r E2-Q3.2}
+set.seed(111) ## setting the random seed! Do not modify this line!
+data = matrix(sample(50:70, size=70, replace = TRUE), ncol=7)
+# complete the code here
+
+```
+
+
+
+### 3.3
+```{r E2-Q3.3}
+set.seed(111) ## setting the random seed! Do not modify this line!
+data = matrix(sample(50:70, size=70, replace = TRUE), ncol=7)
+# complete the code here
+
+```
+
+
+
+### 3.4
+```{r E2-Q3.4}
+set.seed(111) ## setting the random seed! Do not modify this line!
+data = matrix(sample(50:70, size=70, replace = TRUE), ncol=7)
+# complete the code here
+
+```
+
+
+
+### 3.5
+```{r E2-Q3.5}
+set.seed(111) ## setting the random seed! Do not modify this line!
+data = matrix(sample(50:70, size=70, replace = TRUE), ncol=7)
+# complete the code here
+
+```
+
+
+
+## Exercise 3
+
+
+
+### 1.1
+```{r E3-Q1.1}
+## First inspect the results of these two expressions by runing this code chunk and next modify the second expression such that it does not automatically assign a name to the columns
+
+data.frame(a=c(1:5), b=c(6:10))  ## the arguement are named
+data.frame(c(1:5), c(6:10))  ## the arguments are unnamed
+
+```
+
+
+
+### 1.4
+```{r E3-Q1.4}
+features_1 = data.frame(chrom=c('chr1', 'chr2'), start=c(100, 660), end=c(145, 728))
+
+features_2 = data.frame(chrom=I(c('chr1', 'chr2')), start=c(100, 660), end=c(145, 728))
+
+print("inspecting the column called 'chrom' in features_1")
+features_1$chrom
+
+print("inspecting the column called 'chrom' in features_2")
+features_2$chrom
+
+## complete the code here by adding 4 expressions that check the type and class of the column called 'chrom' in both features_1 and features_2
+class(features_1$chrom)
+class(features_2$chrom)
+```
+
+
+
+### 3.1
+```{r E3-Q3.1}
+## Add you code here
+
+```
+
+
+
+### 3.2}
+```{r E3-Q3.2}
+## Add you code here
+
+```
+
+
+
+## Exercise 4
+
+
+
+### 1.4
+```{r E4-Q1.4}
+## Add you code here
+
+```
+
+
+
+### 1.5
+```{r E4-Q1.5}
+## Uncomment the following lines one at a time, run the code chunk and inspect the results. Our observations here come in handy in the next code chunk. You do not need to report anything for this code chunk. 
+
+# df = data.frame(c1=c(0, 1), c2=c(3,4))
+# df
+# df == 0
+# sum(df == 0)
+# class(df == 0)
+```
+
+
+
+### 1.6
+```{r E4-Q1.6}
+## Add you code here 
+
+```
+
+
+
+### 1.7
+```{r E4-Q1.7}
+## Add you code here 
+
+```
+
+
+
+### 1.8
+```{r E4-Q1.8}
+## Add you code here
+
+```
+
+
+
+### 1.9
+```{r E4-Q1.9}
+## Add you code here
+
+```
+
+
+
+### 1.10
+```{r E4-Q1.10}
+## Add you code here
+
+```
+
+
+
+### 1.11
+```{r E4-Q1.11}
+## Add you code here
+
+```
+
+
+
+### 1.12
+```{r E4-Q1.12}
+## Add you code here
+
+```
+
+
+
+### 1.14
+```{r E4-Q1.14}
+## Add you code here
+
+```
+
+
+
+## Exercise 5
+
+
+
+### 1
+```{r E5-Q1}
+set.seed(1111)
+
+n_observations = 1e5
+n_trials = 100
+p_success = 0.6
+
+binomial_simulations = rbinom(n = n_observations, prob = p_success, size = n_trials)
+tabulated_binomial_data = table(binomial_simulations)
+tabulated_binomial_data_normed = tabulated_binomial_data / n_observations
+
+x = seq(0, max(as.integer(names(tabulated_binomial_data))))
+model = dpois(x, lambda=n_trials*p_success)
+
+plot_title = sprintf("n = %s, p = %s", n_trials, p_success)
+plot(tabulated_binomial_data_normed, col='blue',  ylim = c(0, 0.15), main=plot_title)
+points(x, model, col='red')
+
+```
+
+
+
+### 1.1
+```{r E5-Q1.1}
+## Add you code here
+
+```
+
+
+
+### 1.2
+```{r E5-Q1.2}
+## Add you code here
+
+```
+
+
